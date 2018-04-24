@@ -4,6 +4,7 @@ import { NgModule } from '@angular/core';
 import { CoreModule } from './core/core.module';
 
 import { AngularFireModule } from 'angularfire2';
+import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 
 import { RouterModule, Routes } from '@angular/router';
 import { AppComponent } from './app.component';
@@ -11,9 +12,11 @@ import { environment } from '../environments/environment';
 
 // Routes
 import { UserProfileComponent } from './user-profile/user-profile.component';
+import { WelcomeComponent } from './welcome/welcome.component';
 
 
 const appRoutes: Routes = [
+  { path: 'welcome', component: WelcomeComponent},
   { path: '', component: UserProfileComponent},
 ];
 
@@ -21,7 +24,8 @@ const appRoutes: Routes = [
 @NgModule({
   declarations: [
     AppComponent,
-    UserProfileComponent
+    UserProfileComponent,
+    WelcomeComponent
   ],
   imports: [
     BrowserModule,
@@ -30,6 +34,7 @@ const appRoutes: Routes = [
       { enableTracing: true }  // debugging
     ),
     AngularFireModule.initializeApp(environment.firebase),
+    NgbModule.forRoot(),
     CoreModule
   ],
   providers: [],
