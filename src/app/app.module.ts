@@ -16,8 +16,8 @@ import { WelcomeComponent } from './welcome/welcome.component';
 
 
 const appRoutes: Routes = [
-  { path: 'welcome', component: WelcomeComponent},
-  { path: '', component: UserProfileComponent},
+  // { path: 'welcome', component: WelcomeComponent},
+  { path: '', component: WelcomeComponent},
 ];
 
 
