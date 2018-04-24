@@ -29,10 +29,7 @@ const appRoutes: Routes = [
   ],
   imports: [
     BrowserModule,
-    RouterModule.forRoot(
-      appRoutes,
-      { enableTracing: true }  // debugging
-    ),
+    RouterModule.forRoot(appRoutes),
     AngularFireModule.initializeApp(environment.firebase),
     NgbModule.forRoot(),
     CoreModule
