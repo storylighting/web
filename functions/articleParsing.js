@@ -80,3 +80,116 @@ exports.metaMarkUpArticleParagraphs = function (paragraphs){
     return paragraphsData;
   });
 }
+
+/**
+ * Tone Analysis to convert from information about tones into paragraph level analysis for conversion into
+ *
+ * @param {Array<Array<Array<Object>>>} tones An array representing the
+ *     paragraphs of the main body of the article. This array further contains
+ *     an array representing the sentences of each paragraph represented.
+ *     Lastly an array of objects representing each of the tones found in the
+ *     article. All reported tones have a score of at least 0.5; those with a
+ *     score of at least 0.75 are very likely to be perceived in the content.
+ *     The object consists of the following properties:
+ *         - tone_id {String} The unique, non-localized identifier of the
+ *               tone. for descriptions of the tones, see [General purpose tones](https://console.bluemix.net/docs/services/tone-analyzer/using-tone.html#tones).
+ *         - tone_name {String} The user-visible, localized name of the tone.
+ *         - score {Number} The score for the tone in the range of 0.5 to 1. A
+ *               score greater than 0.75 indicates a high likelihood that the
+ *               tone is perceived in the content.
+ * @returns {Array<Object>} An array of objects representing data corresponding
+ *     to the paragraphs of the main body of the article. The object consists
+ *     of the following properties:
+ *         - joy {Number} The normalised value for the paragraph sentiment
+ *               spectrum for Joy and Sadness tones ranging between 1 and -1
+ *               respectively. The result for all the tones in a given
+ *               paragraph is averaged for normalised tone, sentences without
+ *               tones are ignored.
+ *         - anger {Number} The normalised value for the paragraph sentiment
+ *               spectrum for Anger and Fear tones ranging between 1 and -1
+ *               respectively. The result for all the tones in a given
+ *               paragraph is averaged for normalised tone, sentences without
+ *               tones are ignored.
+ *         - level {Number} The normalised value for the paragraph sentiment
+ *               spectrum for Confident and Tentative tones ranging between 1
+ *               and -1 respectively. The result for all the tones in a given
+ *               paragraph is averaged for normalised tone, sentences without
+ *               tones are ignored.
+ */
+exports.toneAnalysis = function(tones){
+  let paragraphsTones = []
+  // Loop over paragraph data
+  for (var i = 0; i <= tones.length - 1; i++) {
+    let paragraphTones = {
+      joy: [],
+      anger: [],
+      level: []
+    };
+    // Loop over sentence data
+    for (var j = 0; j <= tones[i].length - 1; j++) {
+      if (tones[i][j].length > 0 ){
+        // Loop over tones data
+        for (var k = 0; k <= tones[i][j].length - 1; k++) {
+          let tone = tones[i][j][k];
+
+          /* Joy - Sadness Spectrum
+           * A spectrum is defined for Joy and Sadness tones ranging between 1
+           * and -1 respectively. The result for all the tones in a given
+           * paragraph is averaged for normalised tone.
+           */
+          if (tone.tone_id == "joy"){
+            paragraphTones.joy.push(tone.score);
+          }
+          if (tone.tone_id == "sadness"){
+            paragraphTones.joy.push(-tone.score);
+          }
+
+          /* Anger - Fear Spectrum
+           * A spectrum is defined for Anger and Fear tones ranging between 1
+           * and -1 respectively. The result for all the tones in a given
+           * paragraph is averaged for normalised tone.
+           */
+          if (tone.tone_id == "anger"){
+            paragraphTones.anger.push(tone.score);
+          }
+          if (tone.tone_id == "fear"){
+            paragraphTones.anger.push(-tone.score);
+          }
+
+          /* Confident - Tentative Spectrum
+           * A spectrum is defined for Confident and Tentative tones ranging between 1
+           * and -1 respectively. The result for all the tones in a given
+           * paragraph is averaged for normalised tone.
+           */
+          if (tone.tone_id == "confident"){
+            paragraphTones.level.push(tone.score);
+          }
+          if (tone.tone_id == "tentative"){
+            paragraphTones.level.push(-tone.score);
+          }
+        }
+      }
+    }
+
+    /* Average spectrums to obtain a point in 3D space constrained to a cube with
+     * extents 1,1,1 and -1,-1,-1 to convert into a color
+     */
+    if (paragraphTones.joy.length > 0){
+      paragraphTones.joy = paragraphTones.joy.reduce((a, b) => a + b, 0) / paragraphTones.joy.length;
+    } else {
+      paragraphTones.joy = 0;
+    }
+    if (paragraphTones.anger.length > 0){
+      paragraphTones.anger = paragraphTones.anger.reduce((a, b) => a + b, 0) / paragraphTones.anger.length;
+    } else {
+      paragraphTones.anger = 0;
+    }
+    if (paragraphTones.level.length > 0){
+      paragraphTones.level = paragraphTones.level.reduce((a, b) => a + b, 0) / paragraphTones.level.length;
+    } else {
+      paragraphTones.level = 0;
+    }
+    paragraphsTones.push(paragraphTones);
+  }
+  return paragraphsTones;
+}
