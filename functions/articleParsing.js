@@ -45,27 +45,51 @@ exports.toneAnalyzer = function (text){
 }
 
 /**
- * Add color droplets and markup to the article's paragraph elements allowing
- * the individual paragraphs to be color editable and detected for queuing
- * purposes.
+ * Chunk and re-combine article sentence tone analysis from IBM Watson. This
+ * function is required because of anlaysis limits by the API which analyzes
+ * the first 1000 sentences for document-level analysis and only the first 100
+ * sentences for sentence-level analysis.
  *
+ * @param {Number} j Paragraph number, Zero-index based
+ * @param {Array<Array<Array<Object>>>} paragraphsData An array representing
+ *     the paragraphs of the main body of the article. This array further
+ *     contains an array representing the sentences of each paragraph
+ *     represented. Lastly an array of objects representing each of the tones
+ *     found in the article. All reported tones have a score of at least 0.5;
+ *     those with a score of at least 0.75 are very likely to be perceived in
+ *     the content. The object consists of the following properties:
+ *         - tone_id {String} The unique, non-localized identifier of the
+ *               tone. for descriptions of the tones, see [General purpose tones](https://console.bluemix.net/docs/services/tone-analyzer/using-tone.html#tones).
+ *         - tone_name {String} The user-visible, localized name of the tone.
+ *         - score {Number} The score for the tone in the range of 0.5 to 1. A
+ *               score greater than 0.75 indicates a high likelihood that the
+ *               tone is perceived in the content.
+ * @param {String} paragraphsText A string containing the remainder of the
+ *     article yet to analyse.
  * @param {Array<String>} paragraphs An array of unicode strings representing
  *     the paragraphs of the main body of the article. Used to verify marking
  *     up paragraphs according to determined order.
- * @return {Array<HTMLElement>} An array of `HTMLElement`s representing the
- *     paragraph elements to watch.
+ * @returns {Array<Array<Array<Object>>>} An array representing the paragraphs
+ *     of the main body of the article. This array further contains an array
+ *     representing the sentences of each paragraph represented. Lastly an
+ *     array of objects representing each of the tones found in the article.
+ *     All reported tones have a score of at least 0.5; those with a score of
+ *     at least 0.75 are very likely to be perceived in the content. The object
+ *     consists of the following properties:
+ *         - tone_id {String} The unique, non-localized identifier of the
+ *               tone. for descriptions of the tones, see [General purpose tones](https://console.bluemix.net/docs/services/tone-analyzer/using-tone.html#tones).
+ *         - tone_name {String} The user-visible, localized name of the tone.
+ *         - score {Number} The score for the tone in the range of 0.5 to 1. A
+ *               score greater than 0.75 indicates a high likelihood that the
+ *               tone is perceived in the content.
  */
-exports.metaMarkUpArticleParagraphs = function (paragraphs){
-
-  let paragraphsData = [[],];
-
-  // Request from Watson
-  return exports.toneAnalyzer(paragraphs.join('\n')).then(function (tones) {
+function articleSentenceToneAnalyzerHelper (j, paragraphsData, paragraphsText, paragraphs){
+  return exports.toneAnalyzer(paragraphsText).then(function (tones) {
     let documentTones = tones.document_tone;
     let sentenceTones = tones.sentences_tone;
 
     // Return Sentences to Paragraph Level
-    for (let i = 0, j = 0, max = sentenceTones.length; i < max;) {
+    for (let i = 0, max = sentenceTones.length; i < max;) {
       // Check if Sentence Belongs to Paragraph
       if (paragraphs[j].indexOf(sentenceTones[i].text) > -1){
         paragraphsData[j].push(sentenceTones[i].tones);
@@ -77,8 +101,43 @@ exports.metaMarkUpArticleParagraphs = function (paragraphs){
         paragraphsData[j] = [];
       }
     }
-    return paragraphsData;
+
+    let lastSentenceAnalysed = sentenceTones[sentenceTones.length-1].text;
+    let lastSentenceAnalysedLocation = paragraphsText.indexOf(lastSentenceAnalysed);
+    if (lastSentenceAnalysedLocation > -1 & paragraphsText.length > (lastSentenceAnalysedLocation + lastSentenceAnalysed.length)){
+      return articleSentenceToneAnalyzerHelper(j, paragraphsData, paragraphsText.substring(lastSentenceAnalysedLocation + lastSentenceAnalysed.length), paragraphs);
+    } else {
+      return paragraphsData;
+    }
   });
+}
+
+/**
+ * Parse article for sentence level tone information to be used in generating
+ * sentiment timeline to create color progression. Primarily a helper function
+ * to assist in providing magic initalisations to the
+ * `articleSentenceToneAnalyzerHelper`
+ *
+ * @param {Array<String>} paragraphs An array of unicode strings representing
+ *     the paragraphs of the main body of the article. Used to verify marking
+ *     up paragraphs according to determined order.
+ * @returns {Array<Array<Array<Object>>>} An array representing the paragraphs
+ *     of the main body of the article. This array further contains an array
+ *     representing the sentences of each paragraph represented. Lastly an
+ *     array of objects representing each of the tones found in the article.
+ *     All reported tones have a score of at least 0.5; those with a score of
+ *     at least 0.75 are very likely to be perceived in the content. The object
+ *     consists of the following properties:
+ *         - tone_id {String} The unique, non-localized identifier of the
+ *               tone. for descriptions of the tones, see [General purpose tones](https://console.bluemix.net/docs/services/tone-analyzer/using-tone.html#tones).
+ *         - tone_name {String} The user-visible, localized name of the tone.
+ *         - score {Number} The score for the tone in the range of 0.5 to 1. A
+ *               score greater than 0.75 indicates a high likelihood that the
+ *               tone is perceived in the content.
+ */
+exports.articleSentenceToneAnalyzer = function (paragraphs){
+  // Request from Watson
+  return articleSentenceToneAnalyzerHelper(0, [[],], paragraphs.join('\n'), paragraphs);
 }
 
 /**
