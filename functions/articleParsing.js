@@ -89,7 +89,7 @@ exports.toneAnalyzer = function (text){
  *               tone is perceived in the content.
  */
 function articleSentenceToneAnalyzerHelper (j, paragraphsData, paragraphsText, paragraphs){
-  return exports.toneAnalyzer(paragraphsText).then(function (tones) {
+  return exports.toneAnalyzer(paragraphsText).then(tones => {
     let documentTones = tones.document_tone;
     let sentenceTones = tones.sentences_tone;
 
@@ -203,10 +203,10 @@ exports.toneAnalysis = function(tones){
            * and -1 respectively. The result for all the tones in a given
            * paragraph is averaged for normalised tone.
            */
-          if (tone.tone_id == "joy"){
+          if (tone.tone_id === "joy"){
             paragraphTones.joy.push(tone.score);
           }
-          if (tone.tone_id == "sadness"){
+          if (tone.tone_id === "sadness"){
             paragraphTones.joy.push(-tone.score);
           }
 
@@ -215,10 +215,10 @@ exports.toneAnalysis = function(tones){
            * and -1 respectively. The result for all the tones in a given
            * paragraph is averaged for normalised tone.
            */
-          if (tone.tone_id == "anger"){
+          if (tone.tone_id === "anger"){
             paragraphTones.anger.push(tone.score);
           }
-          if (tone.tone_id == "fear"){
+          if (tone.tone_id === "fear"){
             paragraphTones.anger.push(-tone.score);
           }
 
@@ -227,10 +227,10 @@ exports.toneAnalysis = function(tones){
            * and -1 respectively. The result for all the tones in a given
            * paragraph is averaged for normalised tone.
            */
-          if (tone.tone_id == "confident"){
+          if (tone.tone_id === "confident"){
             paragraphTones.level.push(tone.score);
           }
-          if (tone.tone_id == "tentative"){
+          if (tone.tone_id === "tentative"){
             paragraphTones.level.push(-tone.score);
           }
         }
@@ -356,7 +356,7 @@ exports.emotionalColorGradientMap = function(){
   let greens = interpolateArray(greenChannels, n-1);
   let blues = interpolateArray(blueChannels, n-1);
 
-  return reds.map(function (elem, i){
+  return reds.map((elem, i) => {
     return {x: roundTo(elem.x, 1), y: roundTo(elem.y, 1), c: [roundTo(elem.z, 0), roundTo(greens[i].z, 0), roundTo(blues[i].z, 0)]};
   })
 }
@@ -397,7 +397,7 @@ exports.emotionalColorGradientMap = function(){
  */
 exports.toneToColor = function (coordinates){
   let colorMap = exports.emotionalColorGradientMap();
-  return coordinates.map(function (coordinate, index){
+  return coordinates.map((coordinate, index) => {
 
     // Transpose Coordinates
     // https://math.stackexchange.com/a/383343
@@ -423,7 +423,7 @@ exports.toneToColor = function (coordinates){
     x = roundTo(x, 1);
     y = roundTo(y, 1);
 
-    let color = colorMap.filter(gridElement => gridElement.x == x && gridElement.y == y );
+    let color = colorMap.filter(gridElement => gridElement.x === x && gridElement.y === y );
     color = color[0].c; // Select First Element
     let hex = convert.rgb.hex(color);
     let xyz =convert.rgb.xyz(color);
