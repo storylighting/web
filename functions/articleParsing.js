@@ -1,4 +1,8 @@
 var rp = require('request-promise');
+const interpolateArray = require('2d-bicubic-interpolate').default;
+const roundTo = require('round-to');
+var convert = require('color-convert');
+
 
 /**
  * A helper to assist in using Dandelion's Entity Extraction API, using
@@ -141,7 +145,9 @@ exports.articleSentenceToneAnalyzer = function (paragraphs){
 }
 
 /**
- * Tone Analysis to convert from information about tones into paragraph level analysis for conversion into
+ * Tone Analysis to convert from information about tones into paragraph level
+ * analysis for conversion into a cartesian plane and level which will be used
+ * to map to final colors displayed by the article.
  *
  * @param {Array<Array<Array<Object>>>} tones An array representing the
  *     paragraphs of the main body of the article. This array further contains
@@ -251,4 +257,178 @@ exports.toneAnalysis = function(tones){
     paragraphsTones.push(paragraphTones);
   }
   return paragraphsTones;
+}
+
+/**
+ * Color Map
+ *
+ * @returns {Array<Object>} An array of objects represnting an interpolation
+ *     between defined color gradients. The object consists of the following
+ *     properties:
+ *         - x {Number} The beginning coordinate of the Joy-Sadness axis for a
+ *               given interpolation square of width .1
+ *         - y {Number} The beginning coordinate of the Anger-Fear axis for a
+ *               given interpolation square of width .1
+ *         - c {Array<Number>} The color based on a 2D bicubic interpolation of
+ *               the color gradient by seperating the red green and blue
+ *               channels of the color. The color is stored in an array of
+ *               length 3 and of the form [RR, GG, BB] where where RR (red), GG
+ *               (green) and BB (blue) are integers from 0 to 255 representing
+ *               the color.
+ */
+exports.emotionalColorGradientMap = function(){
+  // Defined Coordinates
+  // ( joy, anger ) = #COLOR
+  // ( 0, 1) = #FF0000 (255,   0,   0) Red
+  // ( 0,-1) = #FFFFFF (255, 255, 255) White
+  // ( 1, 0) = #FBB03B (251, 176,  59) Orange
+  // (-1, 0) = #29ABE2 ( 41, 171, 226) Blue
+
+  const redChannels = [
+    {
+      x: 0,
+      y: 0,
+      z: 255 // #FFFFFF (255, 255, 255) White
+    },
+    {
+      x: 0,
+      y: 1,
+      z: 41  // #29ABE2 ( 41, 171, 226) Blue
+    },
+    {
+      x: 1,
+      y: 0,
+      z: 251 // #FBB03B (251, 176,  59) Orange
+    },
+    {
+      x: 1,
+      y: 1,
+      z: 255 // #FF0000 (255,   0,   0) Red
+    }
+  ];
+  const greenChannels = [
+    {
+      x: 0,
+      y: 0,
+      z: 255 // #FFFFFF (255, 255, 255) White
+    },
+    {
+      x: 0,
+      y: 1,
+      z: 171 // #29ABE2 ( 41, 171, 226) Blue
+    },
+    {
+      x: 1,
+      y: 0,
+      z: 176 // #FBB03B (251, 176,  59) Orange
+    },
+    {
+      x: 1,
+      y: 1,
+      z: 0   // #FF0000 (255,   0,   0) Red
+    }
+  ];
+  const blueChannels = [
+    {
+      x: 0,
+      y: 0,
+      z: 255 // #FFFFFF (255, 255, 255) White
+    },
+    {
+      x: 0,
+      y: 1,
+      z: 226 // #29ABE2 ( 41, 171, 226) Blue
+    },
+    {
+      x: 1,
+      y: 0,
+      z: 59  // #FBB03B (251, 176,  59) Orange
+    },
+    {
+      x: 1,
+      y: 1,
+      z: 0   // #FF0000 (255,   0,   0) Red
+    }
+  ];
+  let n = 10;
+  let reds = interpolateArray(redChannels, n-1);
+  let greens = interpolateArray(greenChannels, n-1);
+  let blues = interpolateArray(blueChannels, n-1);
+
+  return reds.map(function (elem, i){
+    return {x: roundTo(elem.x, 1), y: roundTo(elem.y, 1), c: [roundTo(elem.z, 0), roundTo(greens[i].z, 0), roundTo(blues[i].z, 0)]};
+  })
+}
+
+/**
+ * Color mapping of a given cartesian values to an emotional color and
+ * brightness value.
+ *
+ * @param {Array<Object>} emotions An array of objects representing data
+ *     corresponding to the paragraphs of the main body of the article. The
+ *     object consists of the following properties:
+ *         - joy {Number} The normalised value for the paragraph sentiment
+ *               spectrum for Joy and Sadness tones ranging between 1 and -1
+ *               respectively. The result for all the tones in a given
+ *               paragraph is averaged for normalised tone, sentences without
+ *               tones are ignored.
+ *         - anger {Number} The normalised value for the paragraph sentiment
+ *               spectrum for Anger and Fear tones ranging between 1 and -1
+ *               respectively. The result for all the tones in a given
+ *               paragraph is averaged for normalised tone, sentences without
+ *               tones are ignored.
+ *         - level {Number} The normalised value for the paragraph sentiment
+ *               spectrum for Confident and Tentative tones ranging between 1
+ *               and -1 respectively. The result for all the tones in a given
+ *               paragraph is averaged for normalised tone, sentences without
+ *               tones are ignored.
+ * @returns {Array<Object>} An array of objects representing colors
+ *     corresponding to the paragraphs of the main body of the article. The
+ *     object consists of the following propeties:
+ *         - hex {String} An hexadecimal color specified with: #RRGGBB, where
+ *               RR (red), GG (green) and BB (blue) are hexadecimal integers
+ *               between 00 and FF specifying the intensity of the color.
+ *         - xy {Object} An object representing the color specified in CIE
+ *               color space. All points on this plot have unique xy
+ *               coordinates that can be used when setting the color of a hue
+ *               bulb. If an xy value outside of bulbs relevant Gamut triangle
+ *               is chosen, it will produce the closest color it can make.
+ */
+exports.toneToColor = function (coordinates){
+  let colorMap = exports.emotionalColorGradientMap();
+  return coordinates.map(function (coordinate, index){
+
+    // Transpose Coordinates
+    // https://math.stackexchange.com/a/383343
+    let x = (coordinate.joy + coordinate.anger);
+    let y = (coordinate.anger - coordinate.joy);
+
+    // Transform
+    x += 1;
+    y += 1;
+
+    // Scale to Fit 1x1 Box
+    x = x/2;
+    y = y/2;
+
+    // Clip if Outside of Bounding Box
+    x = (x < 0) ? 0 : x;
+    y = (y < 0) ? 0 : y;
+
+    x = (x > 1) ? 1 : x;
+    y = (y > 1) ? 1 : y;
+
+    // Move to Nearest Bucket
+    x = roundTo(x, 1);
+    y = roundTo(y, 1);
+
+    let color = colorMap.filter(gridElement => gridElement.x == x && gridElement.y == y );
+    color = color[0].c; // Select First Element
+    let hex = convert.rgb.hex(color);
+    let xyz =convert.rgb.xyz(color);
+    xyz = xyz.map(val => val/100);
+    let xyConversion = xyz.reduce((a,b)=> a+b, 0);
+
+    return {hex: '#'+hex, xy: {x: xyz[0]/xyConversion, y: xyz[1]/xyConversion}};
+  });
 }

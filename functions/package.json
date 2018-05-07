@@ -10,10 +10,13 @@
     "logs": "firebase functions:log"
   },
   "dependencies": {
+    "2d-bicubic-interpolate": "^1.0.7",
+    "color-convert": "^1.9.1",
     "firebase-admin": "~5.12.0",
     "firebase-functions": "^1.0.1",
     "request": "^2.85.0",
-    "request-promise": "^4.2.2"
+    "request-promise": "^4.2.2",
+    "round-to": "^3.0.0"
   },
   "devDependencies": {
     "eslint": "^4.12.0",
