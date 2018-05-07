@@ -1,3 +1,4 @@
+const functions = require('firebase-functions');
 var rp = require('request-promise');
 const interpolateArray = require('2d-bicubic-interpolate').default;
 const roundTo = require('round-to');
@@ -18,7 +19,7 @@ exports.entityRecognition = function (text){
         text: text,
         top_entities: 3,
         include: 'types,abstract,image',
-        token: '**REMOVED**',
+        token: functions.config().dandelion.token
     },
     json: true // Automatically stringifies the body to JSON
   });
@@ -35,8 +36,8 @@ exports.entityRecognition = function (text){
 exports.toneAnalyzer = function (text){
   return rp({ method: 'POST', uri: 'https://gateway.watsonplatform.net/tone-analyzer/api/v3/tone?version=2017-09-21',
     auth: {
-      user: '**REMOVED**',
-      pass: '**REMOVED**'
+      user: functions.config().watson.user,
+      pass: functions.config().watson.password
     },
     body: {
         text: text,
