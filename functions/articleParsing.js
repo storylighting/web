@@ -41,6 +41,7 @@ exports.toneAnalyzer = function (text){
     },
     body: {
         text: text,
+        sentences: true
     },
     headers: {
       'content-type': 'application/json'
@@ -90,7 +91,10 @@ exports.toneAnalyzer = function (text){
  */
 function articleSentenceToneAnalyzerHelper (j, paragraphsData, paragraphsText, paragraphs){
   return exports.toneAnalyzer(paragraphsText).then(tones => {
-    let documentTones = tones.document_tone;
+    if (!("sentences_tone" in tones) || (typeof tones.sentences_tone === 'undefined')) {
+      console.error("Response from IBM Watson", JSON.stringify(tones));
+      throw new Error("Missing article sentence tones `sentences_tone` array from response.");
+    }
     let sentenceTones = tones.sentences_tone;
 
     // Return Sentences to Paragraph Level
